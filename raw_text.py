@@ -41,3 +41,7 @@ class Document(object):
   def find_spans_by_regex(self, regex):
     matches = [x for x in re.finditer(regex, self.text)]
     return [(m.start(), m.end()) for m in matches]
+
+  def find_spans_and_strings_by_regex(self, regex):
+    matches = [x for x in re.finditer(regex, self.text)]
+    return [(m.start(), m.end(), m.group(0)) for m in matches]
