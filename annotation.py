@@ -34,13 +34,13 @@ class AbstractXML(object):
     self.soup
 
   def pp(self):
-    self.update_soup()
     return self.soup.prettify()
 
 
 class Document(AbstractXML):
-  def __init__(self, soup):
+  def __init__(self, soup, filename):
     self.soup = soup
+    self.filename = filename
     self.status = self.get_text_safe(self.soup.data.info.progress)
     self.savetime = self.get_text_safe(self.soup.data.info.savetime)
     self.schema = Schema(self.soup.schema)
@@ -114,6 +114,35 @@ class Document(AbstractXML):
       Just entities for now, but relations can be added as that class is built out.
     '''
     return self.entities
+
+  def max_annotation_id_integer(self):
+    return max([int(i.string.split("@")[0]) for i in self.soup.find_all("id")])
+
+  def add_entity(self, annotator, _span, _type, _parentsType):
+    docname = self.filename.split(".")[0]
+    # id node
+    id = self.soup.new_tag("id")
+    id.string = "%s@e@%s@%s" % (self.max_annotation_id_integer() + 1, docname, annotator)
+
+    span = self.soup.new_tag("span")
+    span.string = "%s,%s" % _span
+
+    type = self.soup.new_tag("type")
+    type.string = _type
+
+    parentsType = self.soup.new_tag("parentsType")
+    parentsType.string = _parentsType
+
+    properties = self.soup.new_tag("properties")
+
+    new_ent = self.soup.new_tag("entity")
+    new_ent.append(span)
+    new_ent.append(type)
+    new_ent.append(parentsType)
+    new_ent.append(properties)
+    self.soup.annotations.append(new_ent)
+
+    return new_ent
 
   def update_soup(self):
     '''

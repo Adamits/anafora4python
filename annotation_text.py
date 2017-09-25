@@ -53,6 +53,7 @@ class TextSpan(object):
     self.text = text
     self.start = start
     self.end = end
+    self.span = (self.start, self.end)
 
   def truncate(self, str):
     """
