@@ -3,6 +3,8 @@
   Expects a BeautifulSoup object from an XML document
 '''
 
+import re
+
 class AbstractXML(object):
   '''
     Parent class for all objects that represent an XML
@@ -34,7 +36,9 @@ class AbstractXML(object):
     self.soup
 
   def pp(self):
-    return self.soup.prettify()
+    # Better indentation for more readable XML
+    indent = re.compile(r'^(\s*)', re.MULTILINE)
+    return indent.sub(r'\1' * 2, self.soup.prettify())
 
 
 class Document(AbstractXML):
