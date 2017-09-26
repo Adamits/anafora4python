@@ -140,6 +140,7 @@ class Document(AbstractXML):
     properties = self.soup.new_tag("properties")
 
     new_ent = self.soup.new_tag("entity")
+    new_ent.append(id)
     new_ent.append(span)
     new_ent.append(type)
     new_ent.append(parentsType)
