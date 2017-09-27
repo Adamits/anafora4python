@@ -37,8 +37,9 @@ class AbstractXML(object):
 
   def pp(self):
     # Better indentation for more readable XML
-    indent = re.compile(r'^(\s*)', re.MULTILINE)
-    return indent.sub(r'\1' * 2, self.soup.prettify())
+    #indent = re.compile(r'^(\s*)', re.MULTILINE)
+    #return indent.sub(r'\1' * 2, self.soup.prettify())
+    return self.soup.prettify()
 
 
 class Document(AbstractXML):
