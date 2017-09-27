@@ -40,7 +40,7 @@ class AbstractXML(object):
     #line_break = re.compile(r'\n', re.MULTILINE)
     #return line_break.sub(r'', self.soup.prettify())
     xml = self.soup.prettify()
-    xml = re.sub(r'>\n\s+([\w,_@\-]+)\n\s+<', r'>\1<', xml)
+    xml = re.sub(r'>\n\s+([\w,_@\-\./\:\s]+)\n\s+<', r'>\1<', xml)
     xml = re.sub(r'<([\w]+)>\n\s+</([\w]+)', r'<\1></\2', xml)
     return xml
 
