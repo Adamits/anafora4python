@@ -36,10 +36,13 @@ class AbstractXML(object):
     self.soup
 
   def pp(self):
-    # Better indentation for more readable XML
-    #indent = re.compile(r'^(\s*)', re.MULTILINE)
-    #return indent.sub(r'\1' * 2, self.soup.prettify())
-    return self.soup.prettify()
+    # remove \n in strings
+    #line_break = re.compile(r'\n', re.MULTILINE)
+    #return line_break.sub(r'', self.soup.prettify())
+    xml = self.soup.prettify()
+    xml = re.sub(r'>\n\s+([\w,_@\-]+)\n\s+<', r'>\1<', xml)
+    xml = re.sub(r'<([\w]+)>\n\s+</([\w]+)', r'<\1></\2', xml)
+    return xml
 
 
 class Document(AbstractXML):
