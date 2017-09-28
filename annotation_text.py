@@ -53,7 +53,7 @@ class TextSpan(object):
     self.text = text
     self.start = start
     self.end = end
-    self.span = self._get_span()
+    self.span = (self.start, self.end)
 
   def truncate_end(self, trunc):
     """
@@ -68,6 +68,7 @@ class TextSpan(object):
 
     self.text = self.text[:index]
     self.end = self.end - len(self.text) - index
+    self._reset_span()
 
   def truncate_begin(self, trunc):
     """
@@ -85,6 +86,7 @@ class TextSpan(object):
 
     self.text = self.text[index:]
     self.start = self.start + index + 1
+    self._reset_span()
 
-  def _get_span(self):
-    return (self.start, self.end)
+  def _reset_span(self):
+    self.span = (self.start, self.end)
