@@ -65,9 +65,8 @@ class TextSpan(object):
       index = self.text.find(trunc)
       if index == -1:
         return None
-
+    self.end = self.end - (len(self.text) - index)
     self.text = self.text[:index]
-    self.end = self.end - len(self.text) - index
     self._reset_span()
 
   def truncate_begin(self, trunc):
@@ -82,10 +81,10 @@ class TextSpan(object):
         return None
       else:
         # Get index of last char in the match
-        index = index + len(str)
+        index = index + len(trunc)
 
     self.text = self.text[index:]
-    self.start = self.start + index + 1
+    self.start = self.start + index
     self._reset_span()
 
   def _reset_span(self):
