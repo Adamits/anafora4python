@@ -53,12 +53,38 @@ class TextSpan(object):
     self.text = text
     self.start = start
     self.end = end
-    self.span = (self.start, self.end)
+    self.span = self._get_span()
 
-  def truncate(self, str):
+  def truncate_end(self, trunc):
     """
-    Truncates from the first instance of str
+    Truncates from the first instance of str to the end of the text
     """
-    index = self.text.find(str)
+    if type(trunc) == int:
+      index = trunc
+    elif type(trunc) == str:
+      index = self.text.find(trunc)
+      if index == -1:
+        return None
+
     self.text = self.text[:index]
-    self.end = self.end - len(self.text) - index + 1
+    self.end = self.end - len(self.text) - index
+
+  def truncate_begin(self, trunc):
+    """
+    Truncates from the first instance of str to the beginning of the text
+    """
+    if type(trunc) == int:
+      index = trunc
+    elif type(trunc) == str:
+      index = self.text.find(trunc)
+      if index == -1:
+        return None
+      else:
+        # Get index of last char in the match
+        index = index + len(str)
+
+    self.text = self.text[index:]
+    self.start = self.start + index + 1
+
+  def _get_span(self):
+    return (self.start, self.end)
