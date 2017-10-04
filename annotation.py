@@ -64,6 +64,28 @@ class Document(AbstractXML):
   def entity_types(self):
     return list(set([entity.type for entity in self.entities]))
 
+  def contains_span(self, span):
+    """
+    span: a tuple of start/end span for an annotation
+    return: Boolean reflecting if that span is annotated
+    """
+    ann_spans = []
+    # Add all spans, including multiple for a single, disjointed annotation
+    # to one flat list
+    ann_spans += [span for a in self.annotations() for span in a.spans]
+    # Note this does not return true for overlapping spans
+    for ann_span in ann_spans:
+      start, end = span
+      span_range = range(*ann_span)
+      # Make the range include "end" by adding one more to it
+      span_range_list = [s for s in span_range]
+      span_range_list.append(span_range_list[-1]+1)
+
+      if start in span_range_list and end in span_range_list:
+        return True
+
+    return False
+
   def property_names(self):
     '''
       This is just for entities for now
@@ -201,11 +223,23 @@ class Entity(AbstractXML):
   def __init__(self, soup):
     self.soup = soup
     self.id = self.get_text_safe(self.soup.id)
-    self.span = self.get_text_safe(self.soup.span)
+    self.span_string = self.get_text_safe(self.soup.span)
+    self.spans = self._get_spans()
     self.type = self.get_text_safe(self.soup.type)
     self.parentsType = self.get_text_safe(self.soup.parentsType)
     # If the property does not have a value, we can treat it as not existing
     self.properties = self.properties()
+
+  def _get_spans(self):
+    spans = []
+
+    text_spans = self.span_string.split(";")
+    for text_span in text_spans:
+      start = int(text_span.split(",")[0])
+      end = int(text_span.split(",")[1])
+      spans.append((start, end))
+
+    return spans
 
   def is_disjointed(self):
     return ";" in self.span

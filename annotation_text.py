@@ -55,6 +55,9 @@ class TextSpan(object):
     self.end = end
     self.span = (self.start, self.end)
 
+  def is_annotation(self):
+    self.section.document.annotation.contains_span(self.span)
+
   def truncate_end(self, trunc):
     """
     Truncates from the first instance of str to the end of the text
