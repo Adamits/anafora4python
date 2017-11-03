@@ -51,15 +51,41 @@ class Document(AbstractXML):
     self.filename = filename
     self.status = self.get_text_safe(self.soup.data.info.progress)
     self.savetime = self.get_text_safe(self.soup.data.info.savetime)
-    self.schema = Schema(self.soup.schema)
-    self.entities = self.entities()
-    self.relations = self.relations()
+    #self.schema = Schema(self.soup.schema)
+    self.entities_dict = {}
+    self.entities = []
+    self._populate_entities()
+    self.relations = []
+    self.tlinks = []
+    self.identical_chains = []
+    self._populate_relations()
 
-  def entities(self):
-    return [Entity(ent_soup) for ent_soup in self.soup.annotations.find_all("entity")]
+  def _populate_entities(self):
+    """
+    populates the entities attrbute: a list of all entity objects,
+     and the entities_dict attr, a dict of {entity ID: rntity object}
+    """
+    for ent_soup in self.soup.annotations.find_all("entity"):
+      ent = Entity(ent_soup)
+      self.entities.append(ent)
+      self.entities_dict[ent.id] = ent
 
-  def relations(self):
-    return [Relation(rel) for rel in self.soup.annotations.find_all("relation")]
+  def _populate_relations(self):
+    for relation_soup in self.soup.annotations.find_all("relation"):
+      if self.get_text_safe(relation_soup.type).lower() == "tlink":
+        tlink = Tlink(relation_soup, self)
+        self.relations.append(tlink)
+        self.tlinks.append(tlink)
+      elif self.get_text_safe(relation_soup.type).lower() == "identical":
+        ident = IdenticalChain(relation_soup, self)
+        self.relations.append(ident)
+        self.identical_chains.append(ident)
+      else:
+        """
+        For now, we are only using the Tlink class
+        #TODO Add a class for each relation type, and instantiate them uniquely
+        """
+        self.relations.append(Relation(relation_soup, self))
 
   def entity_types(self):
     return list(set([entity.type for entity in self.entities]))
@@ -200,8 +226,9 @@ class Relation(AbstractXML):
   '''
     A lot like entities, but with no spans
   '''
-  def __init__(self, soup):
+  def __init__(self, soup, doc):
     self.soup = soup
+    self.document = doc
     self.id = self.get_text_safe(self.soup.id)
     self.type = self.get_text_safe(self.soup.type)
     self.parentsType = self.get_text_safe(self.soup.parentsType)
@@ -217,6 +244,83 @@ class Relation(AbstractXML):
         valued_props.append(prop)
 
     return valued_props
+
+  def entity_ids(self):
+    """
+    Returns a list of every entity ID in the coref string
+    This is a catch all, that should find coref string for any relation type
+    NOTE beautifulSoup lowercases these string sautomatically?
+    """
+    names = ["firstinstance", "coreferring_string", "set", "subset", "whole", "part", "source", "target"]
+    return [prop.value for prop in self.properties if prop.name in names]
+
+  def entity_documents(self):
+    """
+    A list of unique document id's that the relation points to
+    """
+    return list(set([id.split("@")[2] for id in self.entity_ids()]))
+
+  def single_doc(self):
+    return len(self.entity_documents()) < 2
+
+  def cross_doc(self):
+    return len(self.entity_documents()) > 1
+
+  def entities(self):
+    """
+    return: A list of the actual entity objects
+    """
+    return [self.document.entities_dict[e]for e in self.entity_ids()]
+
+  def remove(self):
+    """
+    A relation is responsible for removing itself, because it means that we already have a handle
+    on the XML node to be removed.
+    Extracting the soup should modify the entire soup object,
+    including what is pointed to by doc.soup, and ultimately output with AbstractXML.pp()
+    """
+    # This will return the soup that was removed
+    return self.soup.extract()
+
+class Tlink(Relation):
+  """
+  Tlinks, which are a type of relation
+  """
+  def source(self):
+    """
+    Just use the soup, there is only one source and this is faster
+     than looping over property objects. Then lookup the entity in the dictionary
+    """
+    if self.get_text_safe(self.soup.properties.Source):
+      return self.document.entities_dict.get(self.get_text_safe(self.soup.properties.Source))
+
+  def target(self):
+    """
+    Just use the soup, there is only one source and this is faster
+     than looping over property objects. Then lookup the entity in the dictionary
+    """
+    if self.get_text_safe(self.soup.properties.Target):
+      return self.document.entities_dict.get(self.get_text_safe(self.soup.properties.Target))
+
+  def entity_ids(self):
+    """
+    Returns a list of every entity ID in the coref string
+    """
+    names = ["Source", "Target"]
+    return [prop.value for prop in self.properties if prop.name in names]
+
+class IdenticalChain(Relation):
+  """
+  Identical chains, which are a type of relation
+  """
+  def entity_ids(self):
+    """
+    Returns a list of every entity ID in the coref string
+    """
+    names = ["firstinstance", "coreferring_string"]
+    #print([(prop.value, prop.name) for prop in self.properties])
+    return [prop.value for prop in self.properties if prop.name.lower() in names]
+
 
 
 class Entity(AbstractXML):
@@ -240,6 +344,9 @@ class Entity(AbstractXML):
       spans.append((start, end))
 
     return spans
+
+  def get_doc_id(self):
+    return self.id.split("@")[2]
 
   def is_disjointed(self):
     return ";" in self.span

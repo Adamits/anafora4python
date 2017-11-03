@@ -4,6 +4,7 @@ text that it annotates
 """
 
 from anafora4python import raw_text
+from anafora4python import annotation
 import re
 
 class Document(object):
@@ -11,7 +12,7 @@ class Document(object):
   def __init__(self, annotation, raw):
     self.annotation = annotation
     self.raw = raw
-    #self.sections = _get_sections()
+    self.sections = self._get_sections()
 
   def has_section(self, section_id):
     if self.raw.find_spans_by_string('section id="%s"' % section_id):
@@ -32,7 +33,37 @@ class Document(object):
       return Section(self, section_id, start, end, text)
 
   def _get_sections(self):
-    return []
+    sections = []
+
+    section_spans = self.raw.find_spans_in_between('\[start section id=', '\[end section id=')
+    for section_span in section_spans:
+      # Get the entire text
+      text = self.raw.find_string_by_span(section_span)
+      # Split into lines
+      lines = text.split("\n")
+      # Use the first line to find the id for that section
+      id = re.search("\[start section id=\"(.*)\"",lines[0]).group(1)
+      # rejoin the lines, removing first and last line ([start section] and [end section])
+      text = ("\n").join(lines[1:-1])
+      start, end = section_span
+      sections.append(Section(self, id, start, end, text))
+
+    return sections
+
+  def get_entity_text(self, entity):
+    if type(entity) == annotation.Entity:
+      """
+      Entity object, defined by the annotation itself
+      """
+      return " ".join([self.raw.find_string_by_span(span) for span in entity.spans])
+    elif type(entity) == tuple:
+      """
+      Span argument
+      """
+      return self.raw.find_string_by_span(span)
+
+    else:
+      raise Exception("get_entity_text takes either a tuple, representing the span, or an Entity object from the annotation module")
 
 class Section(object):
   def __init__(self, document, id, start_span, end_span, text):
@@ -47,8 +78,15 @@ class Section(object):
     text_spans = self.document.raw.find_spans_and_strings_by_regex(regex)
     return [TextSpan(self, start_span, end_span, text) for start_span, end_span, text in text_spans if start_span in section_span_range and end_span in section_span_range]
 
+  def find_text_spans_by_span(self, span):
+    start, end = span
+    section_span_range = range(self.start_span, self.end_span)
+    if start in section_span_range and end in section_span_range:
+      text = self.document.raw.find_string_by_span(span)
+      return TextSpan(start, end, text, self)
+
 class TextSpan(object):
-  def __init__(self, section, start, end, text):
+  def __init__(self, start, end, text, section=None):
     self.section = section
     self.text = text
     self.start = start
