@@ -58,6 +58,7 @@ class Document(AbstractXML):
     self.relations = []
     self.tlinks = []
     self.identical_chains = []
+    self.set_subsets = []
     self._populate_relations()
 
   def _populate_entities(self):
@@ -80,6 +81,10 @@ class Document(AbstractXML):
         ident = IdenticalChain(relation_soup, self)
         self.relations.append(ident)
         self.identical_chains.append(ident)
+      elif self.get_text_safe(relation_soup.type).lower() == "set/subset":
+        set_subset = SetSubset(relation_soup, self)
+        self.relations.append(set_subset)
+        self.set_subsets.append(set_subset)
       else:
         """
         For now, we are only using the Tlink class
@@ -234,6 +239,7 @@ class Relation(AbstractXML):
     self.parentsType = self.get_text_safe(self.soup.parentsType)
     # If the property does not have a value, we can treat it as not existing
     self.properties = self.properties()
+    self.subtype = self._get_subtype()
 
   def properties(self):
     valued_props = []
@@ -244,6 +250,9 @@ class Relation(AbstractXML):
         valued_props.append(prop)
 
     return valued_props
+
+  def _get_subtype(self):
+    return None
 
   def entity_ids(self):
     """
@@ -283,6 +292,9 @@ class Relation(AbstractXML):
     return self.soup.extract()
 
 class Tlink(Relation):
+  def _get_subtype(self):
+    return [prop.value for prop in self.properties if prop.name.lower() == "type"][0]
+
   """
   Tlinks, which are a type of relation
   """
@@ -321,6 +333,22 @@ class IdenticalChain(Relation):
     #print([(prop.value, prop.name) for prop in self.properties])
     return [prop.value for prop in self.properties if prop.name.lower() in names]
 
+class SetSubset(Relation):
+  """
+  Set-Subset, which are a type of relation
+  """
+  def get_set(self):
+    set_list = [prop.value for prop in self.properties if prop.name.lower() == "set"]
+    return set_list[0] if set_list else None
+
+  def get_subset(self):
+    return [prop.value for prop in self.properties if prop.name.lower() == "subset"]
+
+  def entity_ids(self):
+    """
+    Returns a list of every entity ID in the coref string
+    """
+    return self.set() + self.subset()
 
 
 class Entity(AbstractXML):
