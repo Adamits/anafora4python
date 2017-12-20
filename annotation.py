@@ -1,13 +1,13 @@
 '''
-  Python classes for representing Anafora annotations
-  Expects a BeautifulSoup object from an XML document
+Python classes for representing Anafora annotations
+Expects a BeautifulSoup object from an XML document
 '''
 
 import re
 
 class AbstractXML(object):
   '''
-    Parent class for all objects that represent an XML
+  Parent class for all objects that represent an XML
   '''
   def __init__(self, soup):
     self.soup = soup
@@ -64,7 +64,7 @@ class Document(AbstractXML):
   def _populate_entities(self):
     """
     populates the entities attrbute: a list of all entity objects,
-     and the entities_dict attr, a dict of {entity ID: rntity object}
+    and the entities_dict attr, a dict of {entity ID: rntity object}
     """
     for ent_soup in self.soup.annotations.find_all("entity"):
       ent = Entity(ent_soup)
@@ -119,7 +119,7 @@ class Document(AbstractXML):
 
   def property_names(self):
     '''
-      This is just for entities for now
+    This is just for entities for now
     '''
     return list(set([propname for entity in self.entities for propname in entity.property_names()]))
 
@@ -179,6 +179,9 @@ class Document(AbstractXML):
   def max_annotation_id_integer(self):
     return max([int(i.string.split("@")[0]) for i in self.soup.find_all("id")])
 
+  def get_entities(self):
+    return self.entities
+
   def add_entity(self, annotator, _span, _type, _parentsType):
     docname = self.filename.split(".")[0]
     # id node
@@ -208,7 +211,7 @@ class Document(AbstractXML):
 
   def update_soup(self):
     '''
-      Called in AbstractXml.pp()
+    Called in AbstractXml.pp()
     '''
     self.soup.data.info.progress.string = self.status
     self.soup.data.info.savetime.string = self.savetime
@@ -275,7 +278,7 @@ class Relation(AbstractXML):
   def cross_doc(self):
     return len(self.entity_documents()) > 1
 
-  def entities(self):
+  def get_entities(self):
     """
     return: A list of the actual entity objects
     """
@@ -348,7 +351,9 @@ class SetSubset(Relation):
     """
     Returns a list of every entity ID in the coref string
     """
-    return self.set() + self.subset()
+    names = ["set", "subset"]
+
+    return [prop.value for prop in self.properties if prop.name.lower() in names]
 
 
 class Entity(AbstractXML):
@@ -410,9 +415,12 @@ class Entity(AbstractXML):
   def preannotated(self):
     return self.id.endswith("@gold")
 
+  def has_modality(self, modality):
+    return len([p for p in self.properties if p.has_modality(modality)]) > 0
+
   def diff(self, other_entity):
     '''
-      Returns a dict of {entity_sub_tag: [list of the two conflicting values]}
+    Returns a dict of {entity_sub_tag: [list of the two conflicting values]}
     '''
     other_entity_dict = dict(other_entity)
     diffs_dict = {}
@@ -459,6 +467,9 @@ class Property(AbstractXML):
     self.soup = soup
     self.name = self.soup.name
     self.value = self.get_text_safe(self.soup)
+
+  def has_modality(self, modality):
+    return self.name.lower() == "contextualmodality" and self.value.lower() == modality.lower()
 
   def is_aligned_with(self, other_prop):
     return self.name == other_prop.name and self.value and other_prop.value
