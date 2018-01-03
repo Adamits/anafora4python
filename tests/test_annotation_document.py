@@ -10,8 +10,4 @@ doc = annotation.Document(soup(open(test), "xml"), "ID054_clinic_158.Temporal-Re
 raw = raw_text.Document(open(test_raw).read())
 ann_text = annotation_text.Document(doc, raw)
 
-print(ann_text.get_entity_text(doc.entities[20]))
-print(doc.entities[20].type)
-
-print(ann_text._get_sections())
-
+print(doc.get_annotations_by_span((100, 180)))

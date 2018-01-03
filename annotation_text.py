@@ -14,6 +14,43 @@ class Document(object):
     self.raw = raw
     self.sections = self._get_sections()
 
+  def find_text_spans_by_regex(self, regex):
+    """
+    Searches all sections for the regex, and returns text spans that match it
+    """
+    text_spans = []
+    for section in self.sections:
+      text_spans += section.find_text_spans_by_regex(regex)
+
+    return text_spans
+
+  def find_text_spans_by_span(self, span):
+    """
+    Searches all sections for the span, and returns text spans within that span
+    """
+    text_spans = []
+    for section in self.sections:
+      # If the section is farther into the text than the end of the text span,
+      # then this should stop checking
+      if section.start_span > span[1]:
+        return text_spans
+      else:
+        text_spans += section.find_text_spans_by_span(span)
+
+    return text_spans
+
+  def get_sections_by_regex(self, regex):
+    """
+    Return the list of Sections whose text matches the given regex
+    """
+    sections = []
+
+    for section in self.sections:
+      if section.has_regex(regex):
+        sections.append(section)
+
+    return sections
+
   def has_section(self, section_id):
     if self.raw.find_spans_by_string('section id="%s"' % section_id):
       return True
@@ -74,16 +111,26 @@ class Section(object):
     self.id = id
 
   def find_text_spans_by_regex(self, regex):
+    """
+    Searches all text spans in the section, and if its text matches the given regex, returns it in a List
+    """
     section_span_range = range(self.start_span, self.end_span)
     text_spans = self.document.raw.find_spans_and_strings_by_regex(regex)
-    return [TextSpan(self, start_span, end_span, text) for start_span, end_span, text in text_spans if start_span in section_span_range and end_span in section_span_range]
+    return [TextSpan(start_span, end_span, text, section=self) for start_span, end_span, text in text_spans if start_span in section_span_range and end_span in section_span_range]
 
   def find_text_spans_by_span(self, span):
     start, end = span
     section_span_range = range(self.start_span, self.end_span)
     if start in section_span_range and end in section_span_range:
       text = self.document.raw.find_string_by_span(span)
-      return TextSpan(start, end, text, self)
+      return TextSpan(start, end, text, section=self)
+
+  def has_regex(self, regex):
+    match = re.match(regex, self.text)
+    if match == None:
+      return True
+    else:
+      return False
 
 class TextSpan(object):
   def __init__(self, start, end, text, section=None):
@@ -94,7 +141,10 @@ class TextSpan(object):
     self.span = (self.start, self.end)
 
   def is_annotation(self):
-    self.section.document.annotation.contains_span(self.span)
+    return self.section.document.annotation.annotation.contains_span(self.span)
+
+  def get_annotations(self, doc_id):
+    return self.section.document.annotation.get_annotations_by_span(self.span, doc_id=doc_id)
 
   def truncate_end(self, trunc):
     """

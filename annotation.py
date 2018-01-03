@@ -117,6 +117,31 @@ class Document(AbstractXML):
 
     return False
 
+  def get_annotations_by_span(self, span, doc_id=None):
+    """
+    Given a span (tuple of numbers),
+    return all annotations within it's range
+    """
+    annotations = []
+
+    start, end = span
+    span_range = range(start, end)
+    # Make the range include "end" by adding one more to it
+    span_range_list = [s for s in span_range]
+    span_range_list.append(span_range_list[-1] + 1)
+
+    for ann in self.annotations():
+      if doc_id is not None:
+        if ann.get_doc_id() != doc_id:
+          continue
+      # Check entire 'spans' list to account for disjoint spans
+      for span in ann.spans:
+        start, end = span
+        if start in span_range and end in span_range:
+          annotations.append(ann)
+
+    return annotations
+
   def property_names(self):
     '''
     This is just for entities for now
