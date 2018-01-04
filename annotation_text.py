@@ -143,6 +143,8 @@ class TextSpan(object):
   def is_annotation(self):
     return self.section.document.annotation.annotation.contains_span(self.span)
 
+
+
   def get_annotations(self, doc_id):
     """
     Get the list of annotations (Entity, and relation in the future) objects that
@@ -153,6 +155,12 @@ class TextSpan(object):
     """
     # TODO: Find better way of knowing which annotations the text span is pointed to in cross-doc setting
     return self.section.document.annotation.get_annotations_by_span(self.span, doc_id=doc_id)
+
+  def get_tlinks(self, doc_id):
+    """
+    Exactly like get_annotations, but this returns exclusively Tlinks that relate any entity in the text_span to anything else
+    """
+    return self.section.document.annotation.get_tlinks_by_span(self.span, doc_id=doc_id)
 
   def remove_annotations(self, doc_id):
     """

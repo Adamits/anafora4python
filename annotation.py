@@ -153,6 +153,14 @@ class Document(AbstractXML):
 
     return annotations
 
+  def get_tlinks_by_span(self, span, doc_id):
+    """
+    Given a span (tuple of numbers),
+    return all Tlinks within it's range
+    """
+    ids = [ann.id for ann in self.annotations()]
+    return [tlink for tlink in self.tlinks if set(tlink.entity_ids).intersection(set(ids)).any]
+
   def property_names(self):
     '''
     This is just for entities for now
@@ -212,8 +220,17 @@ class Document(AbstractXML):
     '''
     return self.entities
 
-  def max_annotation_id_integer(self):
-    return max([int(i.string.split("@")[0]) for i in self.soup.find_all("id")])
+  def max_entity_id_integer(self):
+    """
+    returns the highest id on any entity in the document
+    """
+    return max([int(ent.id.split("@")[0]) for ent in self.entities])
+
+  def max_relation_id_integer(self):
+    """
+    returns the highest id on any relation in the document
+    """
+    return max([int(rel.id.split("@")[0]) for rel in self.relations])
 
   def get_entities(self):
     return self.entities
@@ -222,7 +239,7 @@ class Document(AbstractXML):
     docname = self.filename.split(".")[0]
     # id node
     id = self.soup.new_tag("id")
-    id.string = "%s@e@%s@%s" % (self.max_annotation_id_integer() + 1, docname, annotator)
+    id.string = "%s@e@%s@%s" % (self.max_entity_id_integer() + 1, docname, annotator)
 
     span = self.soup.new_tag("span")
     span.string = "%s,%s" % _span
@@ -244,6 +261,45 @@ class Document(AbstractXML):
     self.soup.annotations.append(new_ent)
 
     return new_ent
+
+  def add_tlink(self, _source_id, _target_id, _parentsType, _subtype):
+    docname = self.filename.split(".")[0]
+    # id node
+    id = self.soup.new_tag("id")
+    id.string = "%s@r@%s@%s" % (self.max_relation_id_integer() + 1, docname, self.annotator())
+
+    type = self.soup.new_tag("type")
+    type.string = "TLINK"
+
+    parentsType = self.soup.new_tag("parentsType")
+    parentsType.string = _parentsType
+
+    properties = self.soup.new_tag("properties")
+
+    source = self.soup.new_tag("Source")
+    source.string = _source_id
+    properties.append(source)
+
+    subtype = self.soup.new_tag("Type")
+    subtype.string = _subtype
+    properties.append(subtype)
+
+    target = self.soup.new_tag("Target")
+    target.string = _target_id
+    properties.append(target)
+
+    nmo = self.soup.new_tag("Needs_Medical_Opinion")
+    nmo.string = "FALSE"
+    properties.append(nmo)
+
+    new_rel = self.soup.new_tag("relation")
+    new_rel.append(id)
+    new_rel.append(type)
+    new_rel.append(parentsType)
+    new_rel.append(properties)
+    self.soup.annotations.append(new_rel)
+
+    return new_rel
 
   def update_soup(self):
     '''
@@ -349,7 +405,9 @@ class Tlink(Relation):
   def source(self):
     """
     Just use the soup, there is only one source and this is faster
-     than looping over property objects. Then lookup the entity in the dictionary
+    than looping over property objects. Then lookup the entity in the dictionary
+
+    return the actual Entity object that source points to
     """
     if self.get_text_safe(self.soup.properties.Source):
       return self.document.entities_dict.get(self.get_text_safe(self.soup.properties.Source))
@@ -357,7 +415,9 @@ class Tlink(Relation):
   def target(self):
     """
     Just use the soup, there is only one source and this is faster
-     than looping over property objects. Then lookup the entity in the dictionary
+    than looping over property objects. Then lookup the entity in the dictionary
+
+    return the actual Entity object that target points to
     """
     if self.get_text_safe(self.soup.properties.Target):
       return self.document.entities_dict.get(self.get_text_safe(self.soup.properties.Target))
