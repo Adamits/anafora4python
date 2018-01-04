@@ -44,6 +44,17 @@ class AbstractXML(object):
     xml = re.sub(r'<([\w]+)>\n\s+</([\w]+)', r'<\1></\2', xml)
     return xml
 
+class Annotation(AbstractXML):
+  def remove(self):
+    """
+    An annotation is responsible for removing itself, because it means that we already have a handle
+    on the XML node to be removed.
+    Extracting the soup should modify the entire soup object,
+    including what is pointed to by doc.soup, and ultimately output with AbstractXML.pp()
+    """
+    # This will return the soup that was removed
+    return self.soup.extract()
+
 
 class Document(AbstractXML):
   def __init__(self, soup, filename):
@@ -255,7 +266,7 @@ class Schema(AbstractXML):
     self.value = self.get_text_safe(self.soup)
 
 
-class Relation(AbstractXML):
+class Relation(Annotation):
   '''
     A lot like entities, but with no spans
   '''
@@ -308,16 +319,6 @@ class Relation(AbstractXML):
     return: A list of the actual entity objects
     """
     return [self.document.entities_dict[e]for e in self.entity_ids()]
-
-  def remove(self):
-    """
-    A relation is responsible for removing itself, because it means that we already have a handle
-    on the XML node to be removed.
-    Extracting the soup should modify the entire soup object,
-    including what is pointed to by doc.soup, and ultimately output with AbstractXML.pp()
-    """
-    # This will return the soup that was removed
-    return self.soup.extract()
 
 class Tlink(Relation):
   def _get_subtype(self):
@@ -381,7 +382,7 @@ class SetSubset(Relation):
     return [prop.value for prop in self.properties if prop.name.lower() in names]
 
 
-class Entity(AbstractXML):
+class Entity(Annotation):
   def __init__(self, soup):
     self.soup = soup
     self.id = self.get_text_safe(self.soup.id)
@@ -487,7 +488,7 @@ class Entity(AbstractXML):
     self.soup.parentsType.string = self.parentsType
 
 
-class Property(AbstractXML):
+class Property(Annotation):
   def __init__(self, soup):
     self.soup = soup
     self.name = self.soup.name

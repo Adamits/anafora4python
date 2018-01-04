@@ -144,7 +144,24 @@ class TextSpan(object):
     return self.section.document.annotation.annotation.contains_span(self.span)
 
   def get_annotations(self, doc_id):
+    """
+    Get the list of annotations (Entity, and relation in the future) objects that
+    are within this text span, within the doc of the given doc_id.
+    doc_id must be supplied in case we are working with cross-doc, in which case
+    we need to tell the Annotation Document (which may represent several docs), to which
+    text document the spans are referring
+    """
+    # TODO: Find better way of knowing which annotations the text span is pointed to in cross-doc setting
     return self.section.document.annotation.get_annotations_by_span(self.span, doc_id=doc_id)
+
+  def remove_annotations(self, doc_id):
+    """
+    Remove all annotations from the Annotation Document that are within this text span
+
+    ***See above note, which applies here similarly***
+    """
+    for ann in self.get_annotations(doc_id):
+      ann.remove()
 
   def truncate_end(self, trunc):
     """
