@@ -254,6 +254,9 @@ class Document(AbstractXML):
     for ent in self.entities:
       ent.update_soup()
 
+    for rel in self.relations:
+      rel.update_soup()
+
 
 class Schema(AbstractXML):
   '''
@@ -320,13 +323,29 @@ class Relation(Annotation):
     """
     return [self.document.entities_dict[e]for e in self.entity_ids()]
 
-class Tlink(Relation):
-  def _get_subtype(self):
-    return [prop.value for prop in self.properties if prop.name.lower() == "type"][0]
+  def update_soup(self):
+    self.soup.id.string = self.id
+    self.soup.type.string = self.type
+    self.soup.parentsType.string = self.parentsType
+    for prop in self.properties:
+      prop.update_soup()
 
+class Tlink(Relation):
   """
   Tlinks, which are a type of relation
   """
+  def _get_subtype(self):
+    return [prop.value for prop in self.properties if prop.name.lower() == "type"][0]
+
+  def update_subtype(self, subtype):
+    """
+    Change the subtype ('type' in the set of properties) to the given input
+    """
+    for prop in self.properties:
+      if prop.name.lower() == "type":
+        prop.value = subtype
+        break
+
   def source(self):
     """
     Just use the soup, there is only one source and this is faster
@@ -502,4 +521,8 @@ class Property(Annotation):
 
   def agrees_with(self, other_prop):
     return self.name == other_prop.name and self.value == other_prop.value
+
+  def update_soup(self):
+    self.soup.name.string = self.name
+    self.soup.string = self.value
 
