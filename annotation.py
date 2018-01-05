@@ -228,7 +228,6 @@ class Document(AbstractXML):
     """
     returns the highest id on any relation in the document
     """
-    print(max([int(rel.id.split("@")[0]) for rel in self.relations]))
     return max([int(rel.id.split("@")[0]) for rel in self.relations])
 
   def get_entities(self):
