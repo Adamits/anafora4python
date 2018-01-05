@@ -228,12 +228,14 @@ class Document(AbstractXML):
     """
     returns the highest id on any relation in the document
     """
+    print(max([int(rel.id.split("@")[0]) for rel in self.relations]))
     return max([int(rel.id.split("@")[0]) for rel in self.relations])
 
   def get_entities(self):
     return self.entities
 
   def add_entity(self, annotator, _span, _type, _parentsType):
+    #TODO need to investigate if this is incorrect in the case of a cross-doc file, which will have a simpler docname
     docname = self.filename.split(".")[0]
     # id node
     id = self.soup.new_tag("id")
@@ -257,11 +259,20 @@ class Document(AbstractXML):
     new_ent.append(parentsType)
     new_ent.append(properties)
     self.soup.annotations.append(new_ent)
+    # Add to document
+    ent_obj = Entity(new_ent)
+    self.entities.append(ent_obj)
+    self.entities_dict[ent_obj.id] = ent_obj
 
     return new_ent
 
   def add_tlink(self, _source_id, _target_id, _parentsType, _subtype):
-    docname = self.filename.split(".")[0]
+    # Crossdoc/single doc distinction
+    if _source_id.split("@")[2] == _target_id.split("@")[2]:
+      docname = _source_id.split("@")[2]
+    else:
+      docname = self.filename.split(".")[0]
+
     # id node
     id = self.soup.new_tag("id")
     id.string = "%s@r@%s@%s" % (self.max_relation_id_integer() + 1, docname, self.annotator())
@@ -296,6 +307,10 @@ class Document(AbstractXML):
     new_rel.append(parentsType)
     new_rel.append(properties)
     self.soup.annotations.append(new_rel)
+    # Add to document
+    rel_obj = Relation(new_rel, self)
+    self.relations.append(rel_obj)
+    self.tlinks.append(rel_obj)
 
     return new_rel
 
@@ -560,7 +575,7 @@ class Entity(Annotation):
 
   def update_soup(self):
     self.soup.id.string = self.id
-    self.soup.span.string = self.span
+    self.soup.span.string = self.span_string
     self.soup.type.string = self.type
     self.soup.parentsType.string = self.parentsType
 
@@ -581,5 +596,4 @@ class Property(Annotation):
     return self.name == other_prop.name and self.value == other_prop.value
 
   def update_soup(self):
-    self.soup.name.string = self.name
     self.soup.string = self.value
