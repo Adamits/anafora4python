@@ -1,9 +1,10 @@
 import re
 
 class Document(object):
-  def __init__(self, text):
+  def __init__(self, text, name=""):
     self.text = text
     self.tokens = []
+    self.name = name
 
   def find_string_by_span(self, span):
     """

@@ -136,10 +136,7 @@ class Document(AbstractXML):
     annotations = []
 
     start, end = span
-    span_range = range(start, end)
-    # Make the range include "end" by adding one more to it
-    span_range_list = [s for s in span_range]
-    span_range_list.append(span_range_list[-1] + 1)
+    span_range = range(int(start), int(end)+1)
 
     for ann in self.annotations():
       if doc_id is not None:
@@ -159,7 +156,8 @@ class Document(AbstractXML):
     return all Tlinks within it's range
     """
     ids = [ann.id for ann in self.annotations()]
-    return [tlink for tlink in self.tlinks if set(tlink.entity_ids).intersection(set(ids)).any]
+    # Iterate over tlinks, and return the ones that have a source or target in ids
+    return [tlink for tlink in self.tlinks if any(set(tlink.entity_ids()).intersection(set(ids)))]
 
   def property_names(self):
     '''
@@ -585,4 +583,3 @@ class Property(Annotation):
   def update_soup(self):
     self.soup.name.string = self.name
     self.soup.string = self.value
-
