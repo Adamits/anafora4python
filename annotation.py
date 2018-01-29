@@ -391,6 +391,24 @@ class Relation(Annotation):
     """
     return [self.document.entities_dict[e]for e in self.entity_ids()]
 
+  def identical_entities_with(self, other):
+    """
+    Takes another relation, of any type, and returns True if
+    the two have the exact same set of entities that they relate
+
+    NOTE maybe not the most pythonic, but easier for debugging right now...
+    """
+    if isinstance(other, Relation) or issubclass(type(other), Relation):
+      """
+      Check type, in order to throw more readable error
+      """
+      if sorted(self.entity_ids()) == sorted(other.entity_ids()):
+        return True
+      else:
+        return False
+    else:
+      raise Exception("Relation.identical_entities_with(other) requires that other also be a Relation, not a %s" % type(other))
+
   def update_soup(self):
     self.soup.id.string = self.id
     self.soup.type.string = self.type
