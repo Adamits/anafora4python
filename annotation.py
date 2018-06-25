@@ -33,7 +33,7 @@ class AbstractXML(object):
     return 0
 
   def update_soup(self):
-    self.soup
+    pass
 
   def pp(self):
     # remove \n in strings
@@ -58,7 +58,7 @@ class Annotation(AbstractXML):
 
 class Document(AbstractXML):
   def __init__(self, soup, filename):
-    self.soup = soup
+    super(Document, self).__init__(soup)
     self.filename = filename
     self.status = self.get_text_safe(self.soup.data.info.progress)
     self.savetime = self.get_text_safe(self.soup.data.info.savetime)
@@ -68,6 +68,7 @@ class Document(AbstractXML):
     self._populate_entities()
     self.relations = []
     self.tlinks = []
+    self.contains_subevent_tlinks = []
     self.identical_chains = []
     self.set_subsets = []
     self._populate_relations()
@@ -75,7 +76,7 @@ class Document(AbstractXML):
   def _populate_entities(self):
     """
     populates the entities attrbute: a list of all entity objects,
-    and the entities_dict attr, a dict of {entity ID: rntity object}
+    and the entities_dict attr, a dict of {entity ID: entity object}
     """
     for ent_soup in self.soup.annotations.find_all("entity"):
       ent = Entity(ent_soup)
@@ -85,7 +86,12 @@ class Document(AbstractXML):
   def _populate_relations(self):
     for relation_soup in self.soup.annotations.find_all("relation"):
       if self.get_text_safe(relation_soup.type).lower() == "tlink":
-        tlink = Tlink(relation_soup, self)
+        if self.get_text_safe(relation_soup.properties.Type).lower() == 'contains-subevent':
+          tlink = ContainsSubevent(relation_soup, self)
+          self.contains_subevent_tlinks.append(tlink)
+        else:
+          tlink = Tlink(relation_soup, self)
+
         self.relations.append(tlink)
         self.tlinks.append(tlink)
       elif self.get_text_safe(relation_soup.type).lower() == "identical":
@@ -97,11 +103,18 @@ class Document(AbstractXML):
         self.relations.append(set_subset)
         self.set_subsets.append(set_subset)
       else:
-        """
-        For now, we are only using the Tlink class
         #TODO Add a class for each relation type, and instantiate them uniquely
-        """
         self.relations.append(Relation(relation_soup, self))
+
+  def get_all_relations(self):
+    """
+    Return all relations of any type
+
+    This is a placeholder for reworking the API to take less memory
+    Not all of the attributes that hold so much data are needed, and some can be
+    implemented as methods
+    """
+    return self.relations
 
   def entity_types(self):
     return list(set([entity.type for entity in self.entities]))
@@ -150,11 +163,24 @@ class Document(AbstractXML):
 
     return annotations
 
+  def get_ident_chains_with_entity(self, entity):
+    """
+    Given an entity in this doc,
+    return all identical relations that have that entity in them
+    """
+    idents = []
+    for ident in self.identical_chains:
+      if entity.id in ident.entity_ids():
+        idents.append(ident)
+
+    return idents
+
   def get_tlinks_by_span(self, span, doc_id):
     """
     Given a span (tuple of numbers),
     return all Tlinks within it's range
     """
+    #TODO pretty sure this looks unfinished...
     ids = [ann.id for ann in self.annotations()]
     # Iterate over tlinks, and return the ones that have a source or target in ids
     return [tlink for tlink in self.tlinks if any(set(tlink.entity_ids()).intersection(set(ids)))]
@@ -183,12 +209,12 @@ class Document(AbstractXML):
     return [e for e in self.entities if not e.preannotated()]
 
   def align_entities_with(self, other_document):
-    '''
-      Returns list of tuples where tuple[0] is an entity from document
-      and tuple[1] is the aligned entity from other document.
-      Where there is no alignment, the list will have None
-      in the position of the document with no aligned entity
-    '''
+    """
+    Returns list of tuples where tuple[0] is an entity from document
+    and tuple[1] is the aligned entity from other document.
+    Where there is no alignment, the list will have None
+    in the position of the document with no aligned entity
+    """
     aligned = []
     leftover_anns = []
     anns = self.annotations()[::]
@@ -232,6 +258,14 @@ class Document(AbstractXML):
 
   def get_entities(self):
     return self.entities
+
+  def get_contains_subevent_tuples(self):
+    """
+    returns a list of tuples of the form:
+    (source entity id, target entity id)
+    for all cons-sub relations in the document
+    """
+    return [cons_sub.entity_tuple for cons_sub in self.contains_subevent_tlinks]
 
   def add_entity(self, annotator, _span, _type, _parentsType):
     #TODO need to investigate if this is incorrect in the case of a cross-doc file, which will have a simpler docname
@@ -331,18 +365,18 @@ class Schema(AbstractXML):
     Not sure if this is needed, this is Anafora-specific schema info
   '''
   def __init__(self, soup):
-    self.soup = soup
+    super(Schema, self).__init__(soup)
     self.path = self.get_attributes("path", self.soup)[0]
     self.protocol = self.get_attributes("protocol", self.soup)[0]
     self.value = self.get_text_safe(self.soup)
 
 
 class Relation(Annotation):
-  '''
-    A lot like entities, but with no spans
-  '''
+  """
+  A lot like entities, but with no spans
+  """
   def __init__(self, soup, doc):
-    self.soup = soup
+    super(Relation, self).__init__(soup)
     self.document = doc
     self.id = self.get_text_safe(self.soup.id)
     self.type = self.get_text_safe(self.soup.type)
@@ -368,7 +402,7 @@ class Relation(Annotation):
     """
     Returns a list of every entity ID in the coref string
     This is a catch all, that should find coref string for any relation type
-    NOTE beautifulSoup lowercases these string sautomatically?
+    *** NOTE beautifulSoup lowercases these strings automatically? ***
     """
     names = ["firstinstance", "coreferring_string", "set", "subset", "whole", "part", "source", "target"]
     return [prop.value for prop in self.properties if prop.name in names]
@@ -432,7 +466,7 @@ class Tlink(Relation):
         prop.value = subtype
         break
 
-  def source(self):
+  def get_source(self):
     """
     Just use the soup, there is only one source and this is faster
     than looping over property objects. Then lookup the entity in the dictionary
@@ -442,7 +476,7 @@ class Tlink(Relation):
     if self.get_text_safe(self.soup.properties.Source):
       return self.document.entities_dict.get(self.get_text_safe(self.soup.properties.Source))
 
-  def target(self):
+  def get_target(self):
     """
     Just use the soup, there is only one source and this is faster
     than looping over property objects. Then lookup the entity in the dictionary
@@ -459,10 +493,47 @@ class Tlink(Relation):
     names = ["Source", "Target"]
     return [prop.value for prop in self.properties if prop.name in names]
 
+class ContainsSubevent(Tlink):
+  """
+  Contains Subevent, which are of type Tlink
+  """
+  def entity_tuple(self):
+    """
+    Returns a typle of (source, target) entity id's
+    """
+    return (self.source, self.target)
+
+  def has_empty_args(self):
+    """
+    Return: Boolean as to whether the source or target are None
+    """
+    return None in [self.get_source(), self.get_target()]
+
 class IdenticalChain(Relation):
   """
   Identical chains, which are a type of relation
   """
+  def get_first_instance(self):
+    """
+    Just use the soup, there is only one FirstInstance and this is faster
+    than looping over property objects. Then lookup the entity in the dictionary
+
+    return the actual Entity object that FirstInstance points to
+    """
+    if self.get_text_safe(self.soup.properties.FirstInstance):
+      return self.document.entities_dict.get(self.get_text_safe(self.soup.properties.FirstInstance))
+
+  def get_coref_strings(self):
+    """
+    Just use the soup, there is only one source and this is faster
+    than looping over property objects. Then lookup the entity in the dictionary
+
+    return the actual Entity object that source points to
+    """
+    if self.soup.find_all("Coreferring_String") is not None:
+      c_strings = [self.get_text_safe(c) for c in self.soup.findAll("Coreferring_String")]
+      return [self.document.entities_dict.get(c) for c in c_strings]
+
   def entity_ids(self):
     """
     Returns a list of every entity ID in the coref string
@@ -493,7 +564,7 @@ class SetSubset(Relation):
 
 class Entity(Annotation):
   def __init__(self, soup):
-    self.soup = soup
+    super(Entity, self).__init__(soup)
     self.id = self.get_text_safe(self.soup.id)
     self.span_string = self.get_text_safe(self.soup.span)
     self.spans = self._get_spans()
@@ -599,7 +670,7 @@ class Entity(Annotation):
 
 class Property(Annotation):
   def __init__(self, soup):
-    self.soup = soup
+    super(Property, self).__init__(soup)
     self.name = self.soup.name
     self.value = self.get_text_safe(self.soup)
 
