@@ -379,6 +379,7 @@ class Relation(Annotation):
     super(Relation, self).__init__(soup)
     self.document = doc
     self.id = self.get_text_safe(self.soup.id)
+    self.id_num = self.id.split("@")[0]
     self.type = self.get_text_safe(self.soup.type)
     self.parentsType = self.get_text_safe(self.soup.parentsType)
     # If the property does not have a value, we can treat it as not existing
@@ -566,6 +567,7 @@ class Entity(Annotation):
   def __init__(self, soup):
     super(Entity, self).__init__(soup)
     self.id = self.get_text_safe(self.soup.id)
+    self.id_num = self.id.split("@")[0]
     self.span_string = self.get_text_safe(self.soup.span)
     self.spans = self._get_spans()
     self.type = self.get_text_safe(self.soup.type)
