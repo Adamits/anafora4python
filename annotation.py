@@ -64,9 +64,7 @@ class Document(AbstractXML):
     self.savetime = self.get_text_safe(self.soup.data.info.savetime)
     #self.schema = Schema(self.soup.schema)
     self.entities_dict = {}
-    self.entities = []
     self._populate_entities()
-    self.relations = []
     self.tlinks = []
     self.contains_subevent_tlinks = []
     self.identical_chains = []
@@ -80,7 +78,6 @@ class Document(AbstractXML):
     """
     for ent_soup in self.soup.annotations.find_all("entity"):
       ent = Entity(ent_soup)
-      self.entities.append(ent)
       self.entities_dict[ent.id] = ent
 
   def _populate_relations(self):
@@ -92,32 +89,38 @@ class Document(AbstractXML):
         else:
           tlink = Tlink(relation_soup, self)
 
-        self.relations.append(tlink)
         self.tlinks.append(tlink)
       elif self.get_text_safe(relation_soup.type).lower() == "identical":
         ident = IdenticalChain(relation_soup, self)
-        self.relations.append(ident)
         self.identical_chains.append(ident)
       elif self.get_text_safe(relation_soup.type).lower() == "set/subset":
         set_subset = SetSubset(relation_soup, self)
-        self.relations.append(set_subset)
         self.set_subsets.append(set_subset)
       else:
         #TODO Add a class for each relation type, and instantiate them uniquely
-        self.relations.append(Relation(relation_soup, self))
+        #self.relations.append(Relation(relation_soup, self))
+        pass
+
+  def get_entities():
+    """
+    Return: a list of all entities in the Document
+    """
+    return list(self.entities_dict.keys())
 
   def get_all_relations(self):
     """
     Return all relations of any type
-
-    This is a placeholder for reworking the API to take less memory
-    Not all of the attributes that hold so much data are needed, and some can be
-    implemented as methods
     """
-    return self.relations
+    return self.tlinks + \
+      self.contains_subevent_tlinks + \
+      self.identical_chains + \
+      self.set_subsets
+
+  def get_single_doc_idents(self):
+    return [ident for ident in self.identical_chains if ident.single_doc()]
 
   def entity_types(self):
-    return list(set([entity.type for entity in self.entities]))
+    return list(set([entity.type for entity in self.get_entities()]))
 
   def contains_span(self, span):
     """
@@ -189,24 +192,24 @@ class Document(AbstractXML):
     '''
     This is just for entities for now
     '''
-    return list(set([propname for entity in self.entities for propname in entity.property_names()]))
+    return list(set([propname for entity in self.get_entities() for propname in entity.property_names()]))
 
   def annotator(self):
-    for entity in self.entities:
+    for entity in self.get_entities():
       # Find first entity that is not preannotated, and return that as it will ahve the name of the annotator
       if entity.id.split("@")[-1] != "gold":
         return entity.id.split("@")[-1]
     # If no entity id's have annotator name in them, return gold or empty string
     try:
-      return self.entities[0].id.split("@")[-1]
+      return self.get_entities()[0].id.split("@")[-1]
     except:
       return ""
 
   def get_preannotated_entities(self):
-    return [e for e in self.entities if e.preannotated()]
+    return [e for e in self.get_entities() if e.preannotated()]
 
   def get_annotator_annotated_entities(self):
-    return [e for e in self.entities if not e.preannotated()]
+    return [e for e in self.get_entities() if not e.preannotated()]
 
   def align_entities_with(self, other_document):
     """
@@ -242,22 +245,22 @@ class Document(AbstractXML):
     '''
       Just entities for now, but relations can be added as that class is built out.
     '''
-    return self.entities
+    return self.get_entities()
 
   def max_entity_id_integer(self):
     """
     returns the highest id on any entity in the document
     """
-    return max([int(ent.id.split("@")[0]) for ent in self.entities])
+    return max([int(ent.id.split("@")[0]) for ent in self.get_entities()])
 
   def max_relation_id_integer(self):
     """
     returns the highest id on any relation in the document
     """
-    return max([int(rel.id.split("@")[0]) for rel in self.relations])
+    return max([int(rel.id.split("@")[0]) for rel in self.get_all_relations])
 
   def get_entities(self):
-    return self.entities
+    return self.get_entities()
 
   def get_contains_subevent_tuples(self):
     """
@@ -294,7 +297,6 @@ class Document(AbstractXML):
     self.soup.annotations.append(new_ent)
     # Add to document
     ent_obj = Entity(new_ent)
-    self.entities.append(ent_obj)
     self.entities_dict[ent_obj.id] = ent_obj
 
     return new_ent
@@ -342,7 +344,6 @@ class Document(AbstractXML):
     self.soup.annotations.append(new_rel)
     # Add to document
     rel_obj = Relation(new_rel, self)
-    self.relations.append(rel_obj)
     self.tlinks.append(rel_obj)
 
     return new_rel
@@ -353,10 +354,10 @@ class Document(AbstractXML):
     '''
     self.soup.data.info.progress.string = self.status
     self.soup.data.info.savetime.string = self.savetime
-    for ent in self.entities:
+    for ent in self.get_entities():
       ent.update_soup()
 
-    for rel in self.relations:
+    for rel in self.get_all_relations():
       rel.update_soup()
 
 
