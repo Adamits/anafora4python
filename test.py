@@ -10,10 +10,13 @@ for rel in doc.relations:
   print(rel.id)
   print(rel.type)
 '''
-for rel in doc.relations:
-  if rel.cross_doc():
-    print("CROSS")
-    print(rel.type)
-    print(rel.id)
-    print(len(rel.entity_ids()))
-    print(rel.entity_ids())
+print("Getting all relations..")
+print([r.id for r in doc.get_all_relations()])
+print("Getting all Tlinks...")
+print([r.id for r in doc.get_tlinks()])
+print("Getting all CONS-SUB...")
+print([r.id for r in doc.get_contains_subevent_tlinks()])
+print("Getting all IDENT...")
+print([r.id for r in doc.get_identical_chains()])
+print("Getting all Set/Subset...")
+print([r.id for r in doc.get_set_subsets()])

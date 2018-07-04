@@ -65,11 +65,6 @@ class Document(AbstractXML):
     #self.schema = Schema(self.soup.schema)
     self.entities_dict = {}
     self._populate_entities()
-    self.tlinks = []
-    self.contains_subevent_tlinks = []
-    self.identical_chains = []
-    self.set_subsets = []
-    self._populate_relations()
 
   def _populate_entities(self):
     """
@@ -80,44 +75,78 @@ class Document(AbstractXML):
       ent = Entity(ent_soup)
       self.entities_dict[ent.id] = ent
 
-  def _populate_relations(self):
-    for relation_soup in self.soup.annotations.find_all("relation"):
-      if self.get_text_safe(relation_soup.type).lower() == "tlink":
-        if self.get_text_safe(relation_soup.properties.Type).lower() == 'contains-subevent':
-          tlink = ContainsSubevent(relation_soup, self)
-          self.contains_subevent_tlinks.append(tlink)
-        else:
-          tlink = Tlink(relation_soup, self)
-
-        self.tlinks.append(tlink)
-      elif self.get_text_safe(relation_soup.type).lower() == "identical":
-        ident = IdenticalChain(relation_soup, self)
-        self.identical_chains.append(ident)
-      elif self.get_text_safe(relation_soup.type).lower() == "set/subset":
-        set_subset = SetSubset(relation_soup, self)
-        self.set_subsets.append(set_subset)
-      else:
-        #TODO Add a class for each relation type, and instantiate them uniquely
-        #self.relations.append(Relation(relation_soup, self))
-        pass
-
-  def get_entities():
+  def get_entities(self):
     """
     Return: a list of all entities in the Document
     """
     return list(self.entities_dict.keys())
 
+  def get_tlinks(self):
+    """
+    Return: A list of Tlink objects for all Tlinks in the document.
+
+    This traverses the beautiful soup structure each time it is called.
+    """
+    tlink_soups = self.soup.annotations.find('type',\
+                   text='TLINK')
+    tlink_soups = tlink_soups if tlink_soups else []
+
+    return [Tlink(tlink_soup.find_parent('relation'), self)\
+             for tlink_soup in tlink_soups]
+
+  def get_contains_subevent_tlinks(self):
+    """
+    Return: A list of ContainsSubevent objects for all
+     CONTAINS-SUBEVENT Tlinks in the document.
+
+    This traverses the beautiful soup structure each time it is called.
+    """
+    cons_sub_soups = self.soup.annotations.find('Type',\
+                      text='CONTAINS-SUBEVENT')
+    cons_sub_soups = cons_sub_soups if cons_sub_soups else []
+
+    return [ContainsSubevent(cons_sub_soup.find_parent('relation'), self)\
+            for cons_sub_soup in cons_sub_soups]
+
+  def get_identical_chains(self):
+    """
+    Return: A list of IdenticalChain objects for all
+     Identical relations in the document.
+
+    This traverses the beautiful soup structure each time it is called.
+    """
+    ident_soups = self.soup.annotations.find('type',\
+                   text='Identical')
+    ident_soups = ident_soups if ident_soups else []
+
+    return[IdenticalChain(ident_soup.find_parent('relation'), self)\
+           for ident_soup in ident_soups]
+
+  def get_set_subsets(self):
+    """
+    Return: A list of SetSubset objects for all
+     Set/Subset relations in the document.
+
+    This traverses the beautiful soup structure each time it is called.
+    """
+    s_ss_soups = self.soup.annotations.find('type',\
+                   text='Set/Subset')
+    s_ss_soups = s_ss_soups if s_ss_soups else []
+
+    return [SetSubset(s_ss_soup.find_parent('relation'), self)\
+             for s_ss_soup in s_ss_soups]
+
   def get_all_relations(self):
     """
     Return all relations of any type
+
+    This traverses the beautiful soup structure each time it is called.
     """
-    return self.tlinks + \
-      self.contains_subevent_tlinks + \
-      self.identical_chains + \
-      self.set_subsets
+    return [Relation(rel_soup, self) for rel_soup in\
+            self.soup.annotations.find_all("relation")]
 
   def get_single_doc_idents(self):
-    return [ident for ident in self.identical_chains if ident.single_doc()]
+    return [ident for ident in self.get_identical_chains() if ident.single_doc()]
 
   def entity_types(self):
     return list(set([entity.type for entity in self.get_entities()]))
@@ -172,7 +201,7 @@ class Document(AbstractXML):
     return all identical relations that have that entity in them
     """
     idents = []
-    for ident in self.identical_chains:
+    for ident in self.get_identical_chains():
       if entity.id in ident.entity_ids():
         idents.append(ident)
 
@@ -186,7 +215,7 @@ class Document(AbstractXML):
     #TODO pretty sure this looks unfinished...
     ids = [ann.id for ann in self.annotations()]
     # Iterate over tlinks, and return the ones that have a source or target in ids
-    return [tlink for tlink in self.tlinks if any(set(tlink.entity_ids()).intersection(set(ids)))]
+    return [tlink for tlink in self.get_tlinks() if any(set(tlink.entity_ids()).intersection(set(ids)))]
 
   def property_names(self):
     '''
@@ -259,16 +288,13 @@ class Document(AbstractXML):
     """
     return max([int(rel.id.split("@")[0]) for rel in self.get_all_relations])
 
-  def get_entities(self):
-    return self.get_entities()
-
   def get_contains_subevent_tuples(self):
     """
     returns a list of tuples of the form:
     (source entity id, target entity id)
     for all cons-sub relations in the document
     """
-    return [cons_sub.entity_tuple for cons_sub in self.contains_subevent_tlinks]
+    return [cons_sub.entity_tuple for cons_sub in self.get_contains_subevent_tlinks()]
 
   def add_entity(self, annotator, _span, _type, _parentsType):
     #TODO need to investigate if this is incorrect in the case of a cross-doc file, which will have a simpler docname
@@ -344,7 +370,7 @@ class Document(AbstractXML):
     self.soup.annotations.append(new_rel)
     # Add to document
     rel_obj = Relation(new_rel, self)
-    self.tlinks.append(rel_obj)
+    self.get_tlinks().append(rel_obj)
 
     return new_rel
 
