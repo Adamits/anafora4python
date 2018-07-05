@@ -87,7 +87,7 @@ class Document(AbstractXML):
 
     This traverses the beautiful soup structure each time it is called.
     """
-    tlink_soups = self.soup.annotations.find('type',\
+    tlink_soups = self.soup.annotations.find_all('type',\
                    text='TLINK')
     tlink_soups = tlink_soups if tlink_soups else []
 
@@ -101,7 +101,7 @@ class Document(AbstractXML):
 
     This traverses the beautiful soup structure each time it is called.
     """
-    cons_sub_soups = self.soup.annotations.find('Type',\
+    cons_sub_soups = self.soup.annotations.find_all('Type',\
                       text='CONTAINS-SUBEVENT')
     cons_sub_soups = cons_sub_soups if cons_sub_soups else []
 
@@ -115,7 +115,7 @@ class Document(AbstractXML):
 
     This traverses the beautiful soup structure each time it is called.
     """
-    ident_soups = self.soup.annotations.find('type',\
+    ident_soups = self.soup.annotations.find_all('type',\
                    text='Identical')
     ident_soups = ident_soups if ident_soups else []
 
@@ -129,7 +129,7 @@ class Document(AbstractXML):
 
     This traverses the beautiful soup structure each time it is called.
     """
-    s_ss_soups = self.soup.annotations.find('type',\
+    s_ss_soups = self.soup.annotations.find_all('type',\
                    text='Set/Subset')
     s_ss_soups = s_ss_soups if s_ss_soups else []
 
@@ -194,18 +194,6 @@ class Document(AbstractXML):
           annotations.append(ann)
 
     return annotations
-
-  def get_ident_chains_with_entity(self, entity):
-    """
-    Given an entity in this doc,
-    return all identical relations that have that entity in them
-    """
-    idents = []
-    for ident in self.get_identical_chains():
-      if entity.id in ident.entity_ids():
-        idents.append(ident)
-
-    return idents
 
   def get_tlinks_by_span(self, span, doc_id):
     """

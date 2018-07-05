@@ -143,8 +143,6 @@ class TextSpan(object):
   def is_annotation(self):
     return self.section.document.annotation.annotation.contains_span(self.span)
 
-
-
   def get_annotations(self, doc_id):
     """
     Get the list of annotations (Entity, and relation in the future) objects that
