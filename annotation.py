@@ -274,7 +274,7 @@ class Document(AbstractXML):
     """
     returns the highest id on any relation in the document
     """
-    return max([int(rel.id.split("@")[0]) for rel in self.get_all_relations])
+    return max([int(rel.id.split("@")[0]) for rel in self.get_all_relations()])
 
   def get_contains_subevent_tuples(self):
     """

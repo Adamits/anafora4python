@@ -5,11 +5,7 @@ import re
 test = "/Users/ajwieme/verbs-projects/thyme/anaforaProjectFile/Cross-THYMEColonFinal/Dev/ID028/ID028.Thyme2v1-Correction.haco1069.completed.xml"
 
 doc = annotation.Document(soup(open(test), "lxml"), "ID028.Thyme2v1-Correction.haco1069.completed.xml")
-'''
-for rel in doc.relations:
-  print(rel.id)
-  print(rel.type)
-'''
+
 print("Getting all relations..")
 print([r.id for r in doc.get_all_relations()])
 print("Getting all Tlinks...")
