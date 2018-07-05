@@ -10,4 +10,4 @@ doc = annotation.Document(soup(open(test), "xml"), "ID054_clinic_158.Temporal-Re
 raw = raw_text.Document(open(test_raw).read())
 ann_text = annotation_text.Document(doc, raw)
 
-print(doc.annotations()[0].get_doc_id())
+print(doc.get_annotations()[0].get_doc_id())

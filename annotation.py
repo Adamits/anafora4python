@@ -79,7 +79,7 @@ class Document(AbstractXML):
     """
     Return: a list of all entities in the Document
     """
-    return list(self.entities_dict.keys())
+    return list(self.entities_dict.values())
 
   def get_tlinks(self):
     """
@@ -159,7 +159,7 @@ class Document(AbstractXML):
     ann_spans = []
     # Add all spans, including multiple for a single, disjointed annotation
     # to one flat list
-    ann_spans += [span for a in self.annotations() for span in a.spans]
+    ann_spans += [span for a in self.get_annotations() for span in a.spans]
     # Note this does not return true for overlapping spans
     for ann_span in ann_spans:
       start, end = span
@@ -183,7 +183,7 @@ class Document(AbstractXML):
     start, end = span
     span_range = range(int(start), int(end)+1)
 
-    for ann in self.annotations():
+    for ann in self.get_annotations():
       if doc_id is not None:
         if ann.get_doc_id() != doc_id:
           continue
@@ -201,7 +201,7 @@ class Document(AbstractXML):
     return all Tlinks within it's range
     """
     #TODO pretty sure this looks unfinished...
-    ids = [ann.id for ann in self.annotations()]
+    ids = [ann.id for ann in self.get_annotations()]
     # Iterate over tlinks, and return the ones that have a source or target in ids
     return [tlink for tlink in self.get_tlinks() if any(set(tlink.entity_ids()).intersection(set(ids)))]
 
@@ -237,8 +237,8 @@ class Document(AbstractXML):
     """
     aligned = []
     leftover_anns = []
-    anns = self.annotations()[::]
-    other_anns = other_document.annotations()[::]
+    anns = self.get_annotations()[::]
+    other_anns = other_document.get_annotations()[::]
 
     for i, ann in enumerate(anns):
       match = False
@@ -258,10 +258,10 @@ class Document(AbstractXML):
 
     return aligned
 
-  def annotations(self):
-    '''
-      Just entities for now, but relations can be added as that class is built out.
-    '''
+  def get_annotations(self):
+    """
+    Just entities for now, but relations can be added as that class is built out.
+    """
     return self.get_entities()
 
   def max_entity_id_integer(self):
