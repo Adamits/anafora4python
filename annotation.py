@@ -108,6 +108,16 @@ class Document(AbstractXML):
     return [ContainsSubevent(cons_sub_soup.find_parent('relation'), self)\
             for cons_sub_soup in cons_sub_soups]
 
+  def get_cross_doc_contains_subevent_tlinks(self):
+    """
+    Return: A list of ContainsSubevent objects for all
+     CONTAINS-SUBEVENT Tlinks in the document that are cross-doc.
+
+    This traverses the beautiful soup structure each time it is called.
+    """
+
+    return [con_sub for con_sub in self.get_contains_subevent_tlinks if con_sub.is_cross_doc()]
+
   def get_identical_chains(self):
     """
     Return: A list of IdenticalChain objects for all
@@ -432,7 +442,7 @@ class Relation(Annotation):
   def single_doc(self):
     return len(self.entity_documents()) < 2
 
-  def cross_doc(self):
+  def is_cross_doc(self):
     return len(self.entity_documents()) > 1
 
   def get_entities(self):
@@ -524,6 +534,7 @@ class ContainsSubevent(Tlink):
     Return: Boolean as to whether the source or target are None
     """
     return None in [self.get_source(), self.get_target()]
+
 
 class IdenticalChain(Relation):
   """

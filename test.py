@@ -8,6 +8,7 @@ doc = annotation.Document(soup(open(test), "lxml"), "ID028.Thyme2v1-Correction.h
 
 print("Getting all relations..")
 print([r.id for r in doc.get_all_relations()])
+print([r.is_cross_doc() for r in doc.get_all_relations()])
 print("Getting all Tlinks...")
 print([r.id for r in doc.get_tlinks()])
 print("Getting all CONS-SUB...")
