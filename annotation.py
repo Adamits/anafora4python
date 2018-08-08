@@ -146,6 +146,19 @@ class Document(AbstractXML):
     return [SetSubset(s_ss_soup.find_parent('relation'), self)\
              for s_ss_soup in s_ss_soups]
 
+  def get_whole_parts(self):
+    """
+    Return: A list of WholePart objects for all
+     Whole/Part relations in the document.
+
+    This traverses the beautiful soup structure each time it is called.
+    """
+    w_p_soups = self.soup.annotations.find_all('type', text='Whole/Part')
+    w_p_soups = w_p_soups if w_p_soups else []
+
+    return [WholePart(w_p_soup.find_parent('relation'), self) \
+            for w_p_soup in w_p_soups]
+
   def get_all_relations(self):
     """
     Return all relations of any type
@@ -449,7 +462,7 @@ class Relation(Annotation):
     """
     return: A list of the actual entity objects
     """
-    return [self.document.entities_dict[e]for e in self.entity_ids()]
+    return [self.document.entities_dict[e] for e in self.entity_ids()]
 
   def identical_entities_with(self, other):
     """
@@ -475,6 +488,19 @@ class Relation(Annotation):
     self.soup.parentsType.string = self.parentsType
     for prop in self.properties:
       prop.update_soup()
+
+  def get_head(self):
+    return None
+
+  def get_tail(self):
+    return []
+
+  def has_empty_args(self):
+    """
+    Return: Boolean as to whether the source or target are None
+    """
+    return None in [self.get_head(), self.get_tail()]
+
 
 class Tlink(Relation):
   """
@@ -519,15 +545,38 @@ class Tlink(Relation):
     names = ["Source", "Target"]
     return [prop.value for prop in self.properties if prop.name in names]
 
+  def get_head(self):
+    """
+    Generalizable mask for get_source()
+    """
+    return self.get_source()
+
+  def get_tail(self):
+    """
+    Generalizable mask for get_target()
+
+    returns: List
+    """
+    return [self.get_target()]
+
 class ContainsSubevent(Tlink):
   """
   Contains Subevent, which are of type Tlink
   """
+  def __eq__(self, other):
+    """
+    Check if 2 con-sub are equivalent.
+
+    i.e. do they have exactly the same source and target
+    according to the numerical id's on the entities
+    """
+    return self.get_source().id_doc_num == other.get_source().id_doc_num and self.get_target().id_doc_num == other.get_target().id_doc_num
+
   def entity_tuple(self):
     """
     Returns a typle of (source, target) entity id's
     """
-    return (self.source, self.target)
+    return (self.get_source(), self.get_target())
 
   def has_empty_args(self):
     """
@@ -540,6 +589,15 @@ class IdenticalChain(Relation):
   """
   Identical chains, which are a type of relation
   """
+  def __eq__(self, other):
+    """
+    Check if 2 ident are equivalent.
+
+    i.e. does other have exactly the same numerical entity id's
+    as self
+    """
+    return set(self.entity_id_doc_nums()) == set(other.entity_id_doc_nums())
+
   def get_first_instance(self):
     """
     Just use the soup, there is only one FirstInstance and this is faster
@@ -569,16 +627,55 @@ class IdenticalChain(Relation):
     #print([(prop.value, prop.name) for prop in self.properties])
     return [prop.value for prop in self.properties if prop.name.lower() in names]
 
+  def entity_id_nums(self):
+    """
+    Returns a list of every entity ID in the coref string
+    """
+    names = ["firstinstance", "coreferring_string"]
+    # print([(prop.value, prop.name) for prop in self.properties])
+    return [prop.value.split("@")[0] for prop in self.properties if prop.name.lower() in names]
+
+  def entity_id_nums(self):
+    """
+    Returns a list of every entity ID@doc_id in the coref string
+    """
+    names = ["firstinstance", "coreferring_string"]
+    return [prop.value.split("@")[0] + "@" + prop.value.split("@")[3] for prop in self.properties if prop.name.lower() in names]
+
+  def get_head(self):
+    """
+    Generalizable mask for get_first_instance()
+    """
+    return self.get_first_instance()
+
+  def get_tail(self):
+    """
+    Generalizable mask for get_coref_strings()
+    """
+    return self.get_coref_strings()
+
 class SetSubset(Relation):
   """
   Set-Subset, which are a type of relation
   """
+  def __eq__(self, other):
+    """
+    Check if 2 set-subset are equivalent.
+
+    i.e. does other have exactly the same numerical entity id for Set
+    as well as for all Subset entities
+    """
+    if self.get_set().id_doc_num == other.get_set().id_doc_num:
+      return set([e.id_doc_num for e in self.get_subset()]) == set([e.id_doc_num for e in other.get_subset()])
+
   def get_set(self):
-    set_list = [prop.value for prop in self.properties if prop.name.lower() == "set"]
-    return set_list[0] if set_list else None
+    if self.get_text_safe(self.soup.properties.Set):
+      return self.document.entities_dict.get(self.get_text_safe(self.soup.properties.Set))
 
   def get_subset(self):
-    return [prop.value for prop in self.properties if prop.name.lower() == "subset"]
+    if self.soup.find_all("Subset") is not None:
+      ss_strings = [self.get_text_safe(c) for c in self.soup.findAll("Subset")]
+      return [self.document.entities_dict.get(c) for c in ss_strings]
 
   def entity_ids(self):
     """
@@ -588,12 +685,72 @@ class SetSubset(Relation):
 
     return [prop.value for prop in self.properties if prop.name.lower() in names]
 
+  def get_head(self):
+    """
+    Generalizable mask for get_set()
+    """
+    return self.get_set()
+
+  def get_tail(self):
+    """
+    Generalizable mask for get_subset()
+    """
+    return self.get_subset()
+
+
+class WholePart(Relation):
+  """
+  Whole-Part, which are a type of relation
+  """
+  def __eq__(self, other):
+    """
+    Check if 2 whole-part are equivalent.
+
+    i.e. does other have exactly the same numerical entity id for Whole
+    as well as for all Part entities
+    """
+    if self.get_whole().id_doc_num == other.get_whole().id_doc_num:
+      return set([e.id_doc_num for e in self.get_part()]) == set([e.id_doc_num for e in other.get_part()])
+
+
+  def get_whole(self):
+    if self.get_text_safe(self.soup.properties.Whole):
+      return self.document.entities_dict.get(self.get_text_safe(self.soup.properties.Whole))
+
+
+  def get_part(self):
+    if self.soup.find_all("Part") is not None:
+      ss_strings = [self.get_text_safe(c) for c in self.soup.findAll("Part")]
+      return [self.document.entities_dict.get(c) for c in ss_strings]
+
+
+  def entity_ids(self):
+    """
+    Returns a list of every entity ID in the coref string
+    """
+    names = ["whole", "part"]
+
+    return [prop.value for prop in self.properties if prop.name.lower() in names]
+
+  def get_head(self):
+    """
+    Generalizable mask for get_whole()
+    """
+    return self.get_whole()
+
+  def get_tail(self):
+    """
+    Generalizable mask for get_part()
+    """
+    return self.get_part()
+
 
 class Entity(Annotation):
   def __init__(self, soup):
     super(Entity, self).__init__(soup)
     self.id = self.get_text_safe(self.soup.id)
     self.id_num = self.id.split("@")[0]
+    self.id_doc_num = self.id_num + "@" + self.get_doc_id()
     self.span_string = self.get_text_safe(self.soup.span)
     self.spans = self._get_spans()
     self.type = self.get_text_safe(self.soup.type)
@@ -616,24 +773,25 @@ class Entity(Annotation):
     return self.id.split("@")[2]
 
   def is_disjointed(self):
-    return ";" in self.span
+    return ";" in self.span_string
 
   def start_span(self):
-    return self.span.split(",")[0]
+    return self.spans[0][-1]
 
   def end_span(self):
     if self.is_disjointed():
-      return self.span.split(",")[-1]
+      return self.spans[-1][-1]
     else:
-      return self.span.split(",")[1]
+      return self.spans[0][1]
 
   def properties(self):
     valued_props = []
 
-    for c in self.soup.properties.children:
-      prop = Property(c)
-      if prop.name and prop.value:
-        valued_props.append(prop)
+    if self.soup.properties:
+      for c in self.soup.properties.children:
+        prop = Property(c)
+        if prop.name and prop.value:
+          valued_props.append(prop)
 
     return valued_props
 

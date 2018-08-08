@@ -17,3 +17,6 @@ print("Getting all IDENT...")
 print([r.id for r in doc.get_identical_chains()])
 print("Getting all Set/Subset...")
 print([r.id for r in doc.get_set_subsets()])
+
+print("getting entities")
+print([e.id_doc_num for e in doc.get_entities()])

@@ -141,7 +141,7 @@ class TextSpan(object):
     self.span = (self.start, self.end)
 
   def is_annotation(self):
-    return self.section.document.annotation.annotation.contains_span(self.span)
+    return self.section.document.annotation.contains_span(self.span)
 
   def get_annotations(self, doc_id):
     """
