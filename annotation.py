@@ -499,7 +499,7 @@ class Relation(Annotation):
     """
     Return: Boolean as to whether the source or target are None
     """
-    return None in [self.get_head(), self.get_tail()]
+    return None in [self.get_head()] + self.get_tail()
 
 
 class Tlink(Relation):
