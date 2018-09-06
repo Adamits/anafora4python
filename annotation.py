@@ -81,6 +81,12 @@ class Document(AbstractXML):
     """
     return list(self.entities_dict.values())
 
+  def get_sorted_entity_ids(self):
+    """
+    Return: a list of all entity ids in the Document from lowest to highest int
+    """
+    return list(sorted(self.entities_dict.keys()))
+
   def get_tlinks(self):
     """
     Return: A list of Tlink objects for all Tlinks in the document.
