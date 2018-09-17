@@ -124,6 +124,16 @@ class Document(AbstractXML):
 
     return [con_sub for con_sub in self.get_contains_subevent_tlinks() if con_sub.is_cross_doc()]
 
+  def get_within_doc_contains_subevent_tlinks(self):
+    """
+    Return: A list of ContainsSubevent objects for all
+     CONTAINS-SUBEVENT Tlinks in the document that are within-doc.
+
+    This traverses the beautiful soup structure each time it is called.
+    """
+
+    return [con_sub for con_sub in self.get_contains_subevent_tlinks() if not con_sub.is_cross_doc()]
+
   def get_identical_chains(self):
     """
     Return: A list of IdenticalChain objects for all
@@ -146,6 +156,15 @@ class Document(AbstractXML):
     This traverses the beautiful soup structure each time it is called.
     """
     return [ident for ident in self.get_identical_chains() if ident.is_cross_doc()]
+
+  def get_within_doc_identical_chains(self):
+    """
+    Return: A list of IDENT objects for all
+    IDENTs in the document that are within-doc.
+
+    This traverses the beautiful soup structure each time it is called.
+    """
+    return [ident for ident in self.get_identical_chains() if not ident.is_cross_doc()]
 
   def get_set_subsets(self):
     """
@@ -170,6 +189,15 @@ class Document(AbstractXML):
     """
     return [s_ss for s_ss in self.get_set_subsets() if s_ss.is_cross_doc()]
 
+  def get_within_doc_set_subsets(self):
+    """
+    Return: A list of SetSubset objects for all
+     Set/Subset relations in the document that are within-doc.
+
+    This traverses the beautiful soup structure each time it is called.
+    """
+    return [s_ss for s_ss in self.get_set_subsets() if not s_ss.is_cross_doc()]
+
   def get_whole_parts(self):
     """
     Return: A list of WholePart objects for all
@@ -191,6 +219,15 @@ class Document(AbstractXML):
     This traverses the beautiful soup structure each time it is called.
     """
     return [w_p for w_p in self.get_whole_parts() if w_p.is_cross_doc()]
+
+  def get_within_doc_whole_parts(self):
+    """
+    Return: A list of WholePart objects for all
+     Whole/Part relations in the document that are within-doc.
+
+    This traverses the beautiful soup structure each time it is called.
+    """
+    return [w_p for w_p in self.get_whole_parts() if not w_p.is_cross_doc()]
 
   def get_all_relations(self):
     """
